@@ -133,237 +133,52 @@
   </section>
 
   <script>
-    let produtos = JSON.parse(localStorage.getItem("produtos")) || [];
-    let locais = JSON.parse(localStorage.getItem("locais")) || [];
-
-    if (!Array.isArray(produtos)) produtos = [];
-    if (!Array.isArray(locais)) locais = [];
-
-    function salvarDados() {
-      localStorage.setItem("produtos", JSON.stringify(produtos));
-      localStorage.setItem("locais", JSON.stringify(locais));
-    }
-
-    function mostrarGuia(id) {
-      document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
-      document.getElementById(id).classList.add("active");
-      if (id === "locais") mostrarLocais();
-      if (id === "produtos") mostrarProdutos();
-    }
-
-    function atualizarSelects() {
-      const produtoSelect = document.getElementById("selectProduto");
-      if (produtoSelect) {
-        produtoSelect.innerHTML = "";
-        produtos.forEach(p => {
-          const option = document.createElement("option");
-          option.value = p.id;
-          option.textContent = `${p.codigo} - ${p.nome}`;
-          produtoSelect.appendChild(option);
-        });
-      }
-
-      const selectsLocais = ["selectLocalOrigem", "selectLocalDestino", "localInicial"];
-      selectsLocais.forEach(selectId => {
-        const select = document.getElementById(selectId);
-        if (select) {
-          select.innerHTML = "";
-          locais.forEach((l) => {
-            const text = `${l.nome} (${l.endereco})`;
-            const val = `${l.nome}-${l.endereco}`;
-            const option = document.createElement("option");
-            option.value = val;
-            option.textContent = text;
-            select.appendChild(option);
-          });
-        }
-      });
-    }
-
-    function cadastrarProduto() {
-      const nome = document.getElementById("nomeProduto").value.trim();
-      const codigo = document.getElementById("codigoProduto").value.trim();
-      const quantidade = parseInt(document.getElementById("quantidadeInicial").value);
-      const local = document.getElementById("localInicial").value;
-      if (!nome || !codigo || isNaN(quantidade) || !local) return;
-      const id = "p" + Date.now();
-      produtos.push({
-        id,
-        nome,
-        codigo,
-        localizacoes: [{ local, quantidade }],
-        historico: [{
-          data: new Date().toISOString().split("T")[0],
-          acao: "Entrada",
-          origem: "Externo",
-          destino: local,
-          quantidade
-        }]
-      });
-      salvarDados();
-      atualizarSelects();
-      mostrarEstoque();
-      mostrarProdutos();
-      document.getElementById("nomeProduto").value = "";
-      document.getElementById("codigoProduto").value = "";
-      document.getElementById("quantidadeInicial").value = "";
-    }
-
-    function cadastrarLocal() {
-      const nome = document.getElementById("nomeLocal").value.trim();
-      const endereco = document.getElementById("enderecoLocal").value.trim();
-      if (!nome || !endereco) return;
-      if (locais.find(l => l.nome === nome && l.endereco === endereco)) return alert("Local já cadastrado!");
-      locais.push({ nome, endereco });
-      salvarDados();
-      atualizarSelects();
-      document.getElementById("nomeLocal").value = "";
-      document.getElementById("enderecoLocal").value = "";
-      mostrarLocais();
-    }
-
-    function excluirProduto(id) {
-      if (confirm("Deseja excluir este produto?")) {
-        produtos = produtos.filter(p => p.id !== id);
+    // Adicionado: Funções para editar produto/local
+    function editarProduto(id) {
+      const produto = produtos.find(p => p.id === id);
+      const novoNome = prompt("Novo nome do produto:", produto.nome);
+      const novoCodigo = prompt("Novo código do produto:", produto.codigo);
+      if (novoNome && novoCodigo) {
+        produto.nome = novoNome.trim();
+        produto.codigo = novoCodigo.trim();
         salvarDados();
-        atualizarSelects();
         mostrarProdutos();
+        atualizarSelects();
         mostrarEstoque();
       }
     }
 
-    function excluirLocal(nome, endereco) {
-      if (confirm("Deseja excluir este local?")) {
-        locais = locais.filter(l => !(l.nome === nome && l.endereco === endereco));
+    function editarLocal(nome, endereco) {
+      const local = locais.find(l => l.nome === nome && l.endereco === endereco);
+      const novoNome = prompt("Novo nome:", local.nome);
+      const novoEndereco = prompt("Novo endereço:", local.endereco);
+      if (novoNome && novoEndereco) {
+        local.nome = novoNome.trim();
+        local.endereco = novoEndereco.trim();
         salvarDados();
-        atualizarSelects();
         mostrarLocais();
+        atualizarSelects();
       }
     }
 
+    // Modificações nas funções mostrarProdutos e mostrarLocais para incluir botão Editar
     function mostrarProdutos() {
       const div = document.getElementById("listaProdutos");
       div.innerHTML = "<h3>Produtos Cadastrados:</h3>" + produtos.map(p =>
-        `<div>${p.codigo} - ${p.nome} <button onclick="excluirProduto('${p.id}')">Excluir</button></div>`
+        `<div>${p.codigo} - ${p.nome} ` +
+        `<button onclick="editarProduto('${p.id}')">Editar</button> ` +
+        `<button onclick="excluirProduto('${p.id}')">Excluir</button></div>`
       ).join("");
     }
 
     function mostrarLocais() {
       const div = document.getElementById("listaLocais");
       div.innerHTML = "<h3>Locais Cadastrados:</h3>" + locais.map(l =>
-        `<div>${l.nome} (${l.endereco}) <button onclick="excluirLocal('${l.nome}', '${l.endereco}')">Excluir</button></div>`
+        `<div>${l.nome} (${l.endereco}) ` +
+        `<button onclick="editarLocal('${l.nome}', '${l.endereco}')">Editar</button> ` +
+        `<button onclick="excluirLocal('${l.nome}', '${l.endereco}')">Excluir</button></div>`
       ).join("");
     }
-
-    function movimentarProduto() {
-      const produtoId = document.getElementById("selectProduto").value;
-      const origem = document.getElementById("selectLocalOrigem").value;
-      const destino = document.getElementById("selectLocalDestino").value;
-      const quantidade = parseInt(document.getElementById("quantidade").value);
-      if (!produtoId || !destino || isNaN(quantidade)) return;
-
-      const produto = produtos.find(p => p.id === produtoId);
-
-      if (origem === "Externo") {
-        let locDestino = produto.localizacoes.find(l => l.local === destino);
-        if (!locDestino) {
-          locDestino = { local: destino, quantidade: 0 };
-          produto.localizacoes.push(locDestino);
-        }
-        locDestino.quantidade += quantidade;
-      } else {
-        let locOrigem = produto.localizacoes.find(l => l.local === origem);
-        if (!locOrigem || locOrigem.quantidade < quantidade) {
-          alert("Quantidade insuficiente no local de origem.");
-          return;
-        }
-        locOrigem.quantidade -= quantidade;
-
-        let locDestino = produto.localizacoes.find(l => l.local === destino);
-        if (!locDestino) {
-          locDestino = { local: destino, quantidade: 0 };
-          produto.localizacoes.push(locDestino);
-        }
-        locDestino.quantidade += quantidade;
-      }
-
-      produto.historico.push({
-        data: new Date().toISOString().split("T")[0],
-        acao: "Movimentação",
-        origem,
-        destino,
-        quantidade
-      });
-
-      salvarDados();
-      mostrarEstoque();
-      mostrarHistoricoMovimentacao();
-      document.getElementById("quantidade").value = "";
-    }
-
-    function mostrarHistoricoMovimentacao() {
-      const produtoId = document.getElementById("selectProduto").value;
-      const produto = produtos.find(p => p.id === produtoId);
-      const pre = document.getElementById("historicoProduto");
-      if (!produto) return;
-      let texto = `Movimentações para ${produto.nome} (${produto.codigo}):\n`;
-      produto.historico.forEach(h => {
-        texto += `- ${h.data}: ${h.quantidade} de ${h.origem} para ${h.destino}\n`;
-      });
-      pre.textContent = texto;
-    }
-
-    function mostrarEstoque() {
-      const div = document.getElementById("estoqueConteudo");
-      div.innerHTML = "";
-      produtos.forEach(p => {
-        const el = document.createElement("div");
-        el.className = "produto";
-        el.innerHTML = `<strong>${p.nome}</strong> (${p.codigo})<br>` +
-          p.localizacoes.map(l => `${l.local}: ${l.quantidade}`).join("<br>");
-        div.appendChild(el);
-      });
-    }
-
-    function gerarRelatorio() {
-      const rel = document.getElementById("relatorioTexto");
-      let texto = "";
-      produtos.forEach(p => {
-        texto += `Produto: ${p.nome} (${p.codigo})\n`;
-        p.historico.forEach(h => {
-          texto += ` - ${h.data}: ${h.quantidade} de ${h.origem} para ${h.destino}\n`;
-        });
-        texto += "\n";
-      });
-      rel.textContent = texto;
-    }
-
-    async function gerarPDF() {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      let y = 10;
-
-      produtos.forEach(p => {
-        doc.text(`Produto: ${p.nome} (${p.codigo})`, 10, y);
-        y += 7;
-        p.historico.forEach(h => {
-          doc.text(`- ${h.data}: ${h.quantidade} de ${h.origem} para ${h.destino}`, 10, y);
-          y += 7;
-        });
-        y += 5;
-        if (y > 280) {
-          doc.addPage();
-          y = 10;
-        }
-      });
-
-      doc.save("relatorio_estoque.pdf");
-    }
-
-    atualizarSelects();
-    mostrarEstoque();
-    mostrarLocais();
-    mostrarProdutos();
   </script>
 </body>
 </html>
