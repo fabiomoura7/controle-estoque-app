@@ -94,6 +94,7 @@
 
   <section id="produtos" class="active">
     <h2>Cadastro de Produto</h2>
+    <input type="text" id="codigoProduto" placeholder="Código do produto">
     <input type="text" id="nomeProduto" placeholder="Nome do produto">
     <button class="action" onclick="cadastrarProduto()">Cadastrar Produto</button>
   </section>
@@ -103,14 +104,17 @@
     <input type="text" id="nomeLocal" placeholder="Nome do local (ex: Câmara)">
     <input type="text" id="enderecoLocal" placeholder="Local (ex: 01, 02)">
     <button class="action" onclick="cadastrarLocal()">Cadastrar Local</button>
+    <div id="listaLocais"></div>
   </section>
 
   <section id="movimentacao">
     <h2>Movimentar Produto</h2>
-    <select id="selectProduto"></select>
-    <select id="selectLocal"></select>
+    <select id="selectProduto" onchange="mostrarHistoricoMovimentacao()"></select>
+    <select id="selectLocalOrigem"></select>
+    <select id="selectLocalDestino"></select>
     <input type="number" id="quantidade" placeholder="Quantidade">
     <button class="action" onclick="movimentarProduto()">Movimentar</button>
+    <pre id="historicoProduto"></pre>
   </section>
 
   <section id="estoque">
@@ -129,6 +133,9 @@
     let produtos = JSON.parse(localStorage.getItem("produtos")) || [];
     let locais = JSON.parse(localStorage.getItem("locais")) || [];
 
+    if (!Array.isArray(produtos)) produtos = [];
+    if (!Array.isArray(locais)) locais = [];
+
     function salvarDados() {
       localStorage.setItem("produtos", JSON.stringify(produtos));
       localStorage.setItem("locais", JSON.stringify(locais));
@@ -137,6 +144,7 @@
     function mostrarGuia(id) {
       document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
       document.getElementById(id).classList.add("active");
+      if (id === "locais") mostrarLocais();
     }
 
     function atualizarSelects() {
@@ -145,29 +153,37 @@
       produtos.forEach(p => {
         const option = document.createElement("option");
         option.value = p.id;
-        option.textContent = p.nome;
+        option.textContent = `${p.codigo} - ${p.nome}`;
         produtoSelect.appendChild(option);
       });
 
-      const localSelect = document.getElementById("selectLocal");
-      localSelect.innerHTML = "";
-      locais.forEach((l, index) => {
-        const option = document.createElement("option");
-        option.value = `${l.nome}-${l.endereco}`;
-        option.textContent = `${l.nome} (${l.endereco})`;
-        localSelect.appendChild(option);
+      const localOrigem = document.getElementById("selectLocalOrigem");
+      const localDestino = document.getElementById("selectLocalDestino");
+      localOrigem.innerHTML = "";
+      localDestino.innerHTML = "";
+      locais.forEach((l) => {
+        const text = `${l.nome} (${l.endereco})`;
+        const val = `${l.nome}-${l.endereco}`;
+        [localOrigem, localDestino].forEach(select => {
+          const option = document.createElement("option");
+          option.value = val;
+          option.textContent = text;
+          select.appendChild(option);
+        });
       });
     }
 
     function cadastrarProduto() {
       const nome = document.getElementById("nomeProduto").value.trim();
-      if (!nome) return;
+      const codigo = document.getElementById("codigoProduto").value.trim();
+      if (!nome || !codigo) return;
       const id = "p" + Date.now();
-      produtos.push({ id, nome, localizacoes: [], historico: [] });
+      produtos.push({ id, nome, codigo, localizacoes: [], historico: [] });
       salvarDados();
       atualizarSelects();
       mostrarEstoque();
       document.getElementById("nomeProduto").value = "";
+      document.getElementById("codigoProduto").value = "";
     }
 
     function cadastrarLocal() {
@@ -180,32 +196,61 @@
       atualizarSelects();
       document.getElementById("nomeLocal").value = "";
       document.getElementById("enderecoLocal").value = "";
+      mostrarLocais();
+    }
+
+    function mostrarLocais() {
+      const div = document.getElementById("listaLocais");
+      div.innerHTML = "<h3>Locais Cadastrados:</h3>" + locais.map(l => `${l.nome} (${l.endereco})`).join("<br>");
     }
 
     function movimentarProduto() {
       const produtoId = document.getElementById("selectProduto").value;
-      const local = document.getElementById("selectLocal").value;
+      const origem = document.getElementById("selectLocalOrigem").value;
+      const destino = document.getElementById("selectLocalDestino").value;
       const quantidade = parseInt(document.getElementById("quantidade").value);
-      if (!produtoId || !local || isNaN(quantidade)) return;
+      if (!produtoId || !origem || !destino || isNaN(quantidade)) return;
 
       const produto = produtos.find(p => p.id === produtoId);
-      let loc = produto.localizacoes.find(l => l.local === local);
-      if (!loc) {
-        loc = { local, quantidade: 0 };
-        produto.localizacoes.push(loc);
+
+      let locOrigem = produto.localizacoes.find(l => l.local === origem);
+      if (!locOrigem || locOrigem.quantidade < quantidade) {
+        alert("Quantidade insuficiente no local de origem.");
+        return;
       }
-      loc.quantidade += quantidade;
+      locOrigem.quantidade -= quantidade;
+
+      let locDestino = produto.localizacoes.find(l => l.local === destino);
+      if (!locDestino) {
+        locDestino = { local: destino, quantidade: 0 };
+        produto.localizacoes.push(locDestino);
+      }
+      locDestino.quantidade += quantidade;
 
       produto.historico.push({
         data: new Date().toISOString().split("T")[0],
         acao: "Movimentação",
-        local,
+        origem,
+        destino,
         quantidade
       });
 
       salvarDados();
       mostrarEstoque();
+      mostrarHistoricoMovimentacao();
       document.getElementById("quantidade").value = "";
+    }
+
+    function mostrarHistoricoMovimentacao() {
+      const produtoId = document.getElementById("selectProduto").value;
+      const produto = produtos.find(p => p.id === produtoId);
+      const pre = document.getElementById("historicoProduto");
+      if (!produto) return;
+      let texto = `Movimentações para ${produto.nome} (${produto.codigo}):\n`;
+      produto.historico.forEach(h => {
+        texto += `- ${h.data}: ${h.quantidade} de ${h.origem} para ${h.destino}\n`;
+      });
+      pre.textContent = texto;
     }
 
     function mostrarEstoque() {
@@ -214,7 +259,7 @@
       produtos.forEach(p => {
         const el = document.createElement("div");
         el.className = "produto";
-        el.innerHTML = `<strong>${p.nome}</strong><br>` +
+        el.innerHTML = `<strong>${p.nome}</strong> (${p.codigo})<br>` +
           p.localizacoes.map(l => `${l.local}: ${l.quantidade}`).join("<br>");
         div.appendChild(el);
       });
@@ -224,9 +269,9 @@
       const rel = document.getElementById("relatorioTexto");
       let texto = "";
       produtos.forEach(p => {
-        texto += `Produto: ${p.nome}\n`;
+        texto += `Produto: ${p.nome} (${p.codigo})\n`;
         p.historico.forEach(h => {
-          texto += ` - ${h.data}: ${h.acao} de ${h.quantidade} para ${h.local}\n`;
+          texto += ` - ${h.data}: ${h.quantidade} de ${h.origem} para ${h.destino}\n`;
         });
         texto += "\n";
       });
@@ -239,10 +284,10 @@
       let y = 10;
 
       produtos.forEach(p => {
-        doc.text(`Produto: ${p.nome}`, 10, y);
+        doc.text(`Produto: ${p.nome} (${p.codigo})`, 10, y);
         y += 7;
         p.historico.forEach(h => {
-          doc.text(`- ${h.data}: ${h.acao} de ${h.quantidade} para ${h.local}`, 10, y);
+          doc.text(`- ${h.data}: ${h.quantidade} de ${h.origem} para ${h.destino}`, 10, y);
           y += 7;
         });
         y += 5;
@@ -257,6 +302,7 @@
 
     atualizarSelects();
     mostrarEstoque();
+    mostrarLocais();
   </script>
 </body>
 </html>
