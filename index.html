@@ -3,200 +3,77 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Controle de Estoque Profissional</title>
+  <title>Controle de Estoque</title>
+
+  <!-- jsPDF para gerar PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 0;
-      background: #f9f9f9;
+      margin: 30px;
+      background-color: #f5f5f5;
     }
-    header {
-      background-color: #4CAF50;
-      padding: 15px;
-      color: white;
-      text-align: center;
-      font-size: 24px;
-      font-weight: bold;
+    h1, h2 {
+      color: #333;
     }
-    nav {
-      display: flex;
-      background: #333;
-    }
-    nav button {
-      flex: 1;
-      padding: 15px;
-      background: #333;
-      border: none;
-      color: white;
-      cursor: pointer;
-      font-size: 16px;
-    }
-    nav button:hover, nav button.active {
-      background: #4CAF50;
-    }
-    main {
-      padding: 20px;
-      max-width: 800px;
-      margin: auto;
-      background: white;
-      min-height: 400px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    section {
-      display: none;
-    }
-    section.active {
-      display: block;
-    }
-    label {
-      display: block;
-      margin-top: 10px;
-      font-weight: bold;
-    }
-    input, select {
-      width: 100%;
+    input, select, button {
       padding: 10px;
-      margin-top: 5px;
+      margin: 5px;
       font-size: 16px;
-      box-sizing: border-box;
     }
-    button.action-btn {
-      margin-top: 15px;
-      padding: 10px 20px;
-      font-size: 16px;
+    button {
       background-color: #4CAF50;
       color: white;
       border: none;
       cursor: pointer;
-      border-radius: 4px;
-      transition: background-color 0.3s ease;
     }
-    button.action-btn:hover {
+    button:hover {
       background-color: #45a049;
     }
-    .list-item {
-      padding: 10px;
-      border-bottom: 1px solid #ddd;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .list-item button {
-      background: #e74c3c;
-      border: none;
-      color: white;
-      padding: 5px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-      transition: background-color 0.3s ease;
-    }
-    .list-item button:hover {
-      background: #c0392b;
-    }
-    #estoque .localizacao {
-      font-size: 14px;
-      color: #555;
-      margin-left: 15px;
-    }
-    pre {
-      background: #eee;
+    #estoque {
+      background-color: white;
       padding: 15px;
-      white-space: pre-wrap;
-      max-height: 200px;
-      overflow-y: auto;
-      border-radius: 6px;
-      margin-top: 10px;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .produto {
+      margin-bottom: 10px;
+      padding: 10px;
+      border-bottom: 1px solid #ccc;
     }
   </style>
 </head>
 <body>
 
-<header>Controle de Estoque Profissional</header>
+<h1>Controle de Estoque</h1>
 
-<nav>
-  <button id="menu-produtos" class="active">Produtos</button>
-  <button id="menu-locais">Locais</button>
-  <button id="menu-movimentacao">Movimentação</button>
-  <button id="menu-relatorio">Relatório</button>
-</nav>
+<h2>Cadastro de Produto</h2>
+<input type="text" id="nomeProduto" placeholder="Nome do produto" />
+<button onclick="cadastrarProduto()">Cadastrar Produto</button>
 
-<main>
-  <!-- Produtos -->
-  <section id="produtos" class="active">
-    <h2>Cadastro de Produtos</h2>
-    <input type="text" id="nomeProduto" placeholder="Nome do produto" />
-    <button class="action-btn" onclick="cadastrarProduto()">Cadastrar Produto</button>
-    <h3>Produtos Cadastrados</h3>
-    <div id="listaProdutos"></div>
-  </section>
+<h2>Cadastro de Local</h2>
+<input type="text" id="nomeLocal" placeholder="Nome do local (ex: Câmara)" />
+<input type="text" id="enderecoLocal" placeholder="Descrição ou endereço (ex: 01, 02)" />
+<button onclick="cadastrarLocal()">Cadastrar Local</button>
 
-  <!-- Locais -->
-  <section id="locais">
-    <h2>Cadastro de Locais</h2>
-    <input type="text" id="nomeLocal" placeholder="Nome do local (ex: Câmara Fria)" />
-    <input type="text" id="enderecoLocal" placeholder="Endereço ou descrição" />
-    <button class="action-btn" onclick="cadastrarLocal()">Cadastrar Local</button>
-    <h3>Locais Cadastrados</h3>
-    <div id="listaLocais"></div>
-  </section>
+<h2>Movimentar Produto</h2>
+<select id="selectProduto"></select>
+<select id="selectLocal"></select>
+<input type="number" id="quantidade" placeholder="Quantidade" />
+<button onclick="movimentarProduto()">Movimentar</button>
 
-  <!-- Movimentação -->
-  <section id="movimentacao">
-    <h2>Movimentar Produto</h2>
-    <label for="selectProduto">Produto</label>
-    <select id="selectProduto"></select>
+<h2>Estoque Atual</h2>
+<div id="estoque"></div>
 
-    <label for="selectLocal">Local</label>
-    <select id="selectLocal"></select>
-
-    <label for="quantidade">Quantidade</label>
-    <input type="number" id="quantidade" placeholder="Quantidade" />
-
-    <button class="action-btn" onclick="movimentarProduto()">Movimentar</button>
-
-    <h3>Estoque Atual</h3>
-    <div id="estoque"></div>
-  </section>
-
-  <!-- Relatório -->
-  <section id="relatorio">
-    <h2>Relatório de Movimentações</h2>
-    <button class="action-btn" onclick="gerarRelatorio()">Gerar Relatório</button>
-    <pre id="relatorioText"></pre>
-  </section>
-</main>
+<h2>Relatório de Movimentações</h2>
+<button onclick="gerarRelatorio()">Gerar Relatório (texto)</button>
+<button onclick="gerarPDF()">Gerar Relatório em PDF</button>
+<pre id="relatorio"></pre>
 
 <script>
-  // Navegação simples entre seções
-  const sections = {
-    produtos: document.getElementById('produtos'),
-    locais: document.getElementById('locais'),
-    movimentacao: document.getElementById('movimentacao'),
-    relatorio: document.getElementById('relatorio')
-  };
+  const { jsPDF } = window.jspdf;
 
-  const buttons = {
-    produtos: document.getElementById('menu-produtos'),
-    locais: document.getElementById('menu-locais'),
-    movimentacao: document.getElementById('menu-movimentacao'),
-    relatorio: document.getElementById('menu-relatorio')
-  };
-
-  function setActiveSection(name) {
-    for (const sec in sections) {
-      sections[sec].classList.toggle('active', sec === name);
-      buttons[sec].classList.toggle('active', sec === name);
-    }
-  }
-
-  buttons.produtos.onclick = () => setActiveSection('produtos');
-  buttons.locais.onclick = () => setActiveSection('locais');
-  buttons.movimentacao.onclick = () => setActiveSection('movimentacao');
-  buttons.relatorio.onclick = () => setActiveSection('relatorio');
-
-  // Dados no localStorage
   let produtos = JSON.parse(localStorage.getItem("produtos")) || [];
   let locais = JSON.parse(localStorage.getItem("locais")) || [];
 
@@ -205,168 +82,104 @@
     localStorage.setItem("locais", JSON.stringify(locais));
   }
 
-  // Atualiza lista e selects
-  function atualizarUI() {
-    // Produtos
-    const listaProdutos = document.getElementById('listaProdutos');
-    listaProdutos.innerHTML = '';
+  function atualizarSelects() {
+    const produtoSelect = document.getElementById("selectProduto");
+    produtoSelect.innerHTML = "";
     produtos.forEach(p => {
-      const div = document.createElement('div');
-      div.className = 'list-item';
-      div.innerHTML = `
-        <span>${p.nome}</span>
-        <button onclick="excluirProduto('${p.id}')">Excluir</button>
-      `;
-      listaProdutos.appendChild(div);
-    });
-
-    // Locais
-    const listaLocais = document.getElementById('listaLocais');
-    listaLocais.innerHTML = '';
-    locais.forEach(l => {
-      const div = document.createElement('div');
-      div.className = 'list-item';
-      div.innerHTML = `
-        <span>${l.nome} (${l.endereco})</span>
-        <button onclick="excluirLocal('${l.nome}')">Excluir</button>
-      `;
-      listaLocais.appendChild(div);
-    });
-
-    // Select Produtos para movimentação
-    const selectProduto = document.getElementById('selectProduto');
-    selectProduto.innerHTML = '';
-    produtos.forEach(p => {
-      const option = document.createElement('option');
+      const option = document.createElement("option");
       option.value = p.id;
       option.textContent = p.nome;
-      selectProduto.appendChild(option);
+      produtoSelect.appendChild(option);
     });
 
-    // Select Locais para movimentação
-    const selectLocal = document.getElementById('selectLocal');
-    selectLocal.innerHTML = '';
+    const localSelect = document.getElementById("selectLocal");
+    localSelect.innerHTML = "";
     locais.forEach(l => {
-      const option = document.createElement('option');
-      option.value = l.nome;
+      const option = document.createElement("option");
+      // Valor do local como combinação nome + endereco para diferenciar
+      option.value = `${l.nome} - ${l.endereco}`;
       option.textContent = `${l.nome} (${l.endereco})`;
-      selectLocal.appendChild(option);
+      localSelect.appendChild(option);
     });
-
-    mostrarEstoque();
   }
 
-  // Funções de cadastro
   function cadastrarProduto() {
     const nome = document.getElementById("nomeProduto").value.trim();
-    if (!nome) return alert("Informe o nome do produto");
-    if (produtos.find(p => p.nome.toLowerCase() === nome.toLowerCase())) {
-      return alert("Produto já cadastrado");
-    }
+    if (!nome) return alert("Digite o nome do produto.");
     const id = "p" + Date.now();
     produtos.push({ id, nome, localizacoes: [], historico: [] });
     salvarDados();
-    atualizarUI();
+    atualizarSelects();
+    mostrarEstoque();
     document.getElementById("nomeProduto").value = "";
   }
 
   function cadastrarLocal() {
     const nome = document.getElementById("nomeLocal").value.trim();
     const endereco = document.getElementById("enderecoLocal").value.trim();
-    if (!nome || !endereco) return alert("Informe nome e endereço do local");
-    if (locais.find(l => l.nome.toLowerCase() === nome.toLowerCase())) {
-      return alert("Local já cadastrado");
-    }
+    if (!nome || !endereco) return alert("Preencha nome e descrição/endereço do local.");
+
+    // Agora permite nomes iguais, apenas diferenciando pela descrição
     locais.push({ nome, endereco });
     salvarDados();
-    atualizarUI();
+    atualizarSelects();
     document.getElementById("nomeLocal").value = "";
     document.getElementById("enderecoLocal").value = "";
   }
 
-  // Excluir funções
-  function excluirProduto(id) {
-    if (!confirm("Deseja realmente excluir este produto?")) return;
-    produtos = produtos.filter(p => p.id !== id);
-    salvarDados();
-    atualizarUI();
-  }
-
-  function excluirLocal(nome) {
-    if (!confirm("Deseja realmente excluir este local?")) return;
-    // Também remover localizações desse local nos produtos
-    produtos.forEach(p => {
-      p.localizacoes = p.localizacoes.filter(l => l.local !== nome);
-    });
-    locais = locais.filter(l => l.nome !== nome);
-    salvarDados();
-    atualizarUI();
-  }
-
-  // Movimentação
   function movimentarProduto() {
     const produtoId = document.getElementById("selectProduto").value;
-    const local = document.getElementById("selectLocal").value;
+    const localSelecionado = document.getElementById("selectLocal").value;
     const quantidade = parseInt(document.getElementById("quantidade").value);
-    if (!produtoId || !local || isNaN(quantidade)) return alert("Preencha todos os campos corretamente");
-    if (quantidade === 0) return alert("Quantidade não pode ser zero");
+    if (!produtoId || !localSelecionado || isNaN(quantidade)) return alert("Preencha todos os campos corretamente.");
 
     const produto = produtos.find(p => p.id === produtoId);
-    let loc = produto.localizacoes.find(l => l.local === local);
+
+    // localSelecionado no formato "nome - endereco"
+    let loc = produto.localizacoes.find(l => `${l.local} - ${l.endereco}` === localSelecionado);
+
     if (!loc) {
-      loc = { local, quantidade: 0 };
+      const [nomeLocal, enderecoLocal] = localSelecionado.split(" - ");
+      loc = { local: nomeLocal, endereco: enderecoLocal, quantidade: 0 };
       produto.localizacoes.push(loc);
     }
-    loc.quantidade += quantidade;
 
-    // Remover local se quantidade ficar zero ou menos
-    if (loc.quantidade <= 0) {
-      produto.localizacoes = produto.localizacoes.filter(l => l.local !== local);
-    }
+    loc.quantidade += quantidade;
 
     produto.historico.push({
       data: new Date().toISOString().split("T")[0],
       acao: quantidade > 0 ? "Entrada" : "Saída",
-      local,
+      local: localSelecionado,
       quantidade
     });
 
     salvarDados();
-    atualizarUI();
+    mostrarEstoque();
     document.getElementById("quantidade").value = "";
   }
 
-  // Mostrar estoque
   function mostrarEstoque() {
     const div = document.getElementById("estoque");
-    div.innerHTML = '';
+    div.innerHTML = "";
     if (produtos.length === 0) {
       div.textContent = "Nenhum produto cadastrado.";
       return;
     }
     produtos.forEach(p => {
       const el = document.createElement("div");
-      el.innerHTML = `<strong>${p.nome}</strong>`;
+      el.className = "produto";
+      el.innerHTML = `<strong>${p.nome}</strong><br>`;
       if (p.localizacoes.length > 0) {
-        p.localizacoes.forEach(l => {
-          const span = document.createElement("div");
-          span.className = "localizacao";
-          span.textContent = `${l.local}: ${l.quantidade}`;
-          el.appendChild(span);
-        });
+        el.innerHTML += p.localizacoes.map(l => `${l.local} (${l.endereco}): ${l.quantidade}`).join("<br>");
       } else {
-        const span = document.createElement("div");
-        span.className = "localizacao";
-        span.textContent = "Sem estoque registrado.";
-        el.appendChild(span);
+        el.innerHTML += "Sem estoque registrado.";
       }
       div.appendChild(el);
     });
   }
 
-  // Relatório
   function gerarRelatorio() {
-    const rel = document.getElementById("relatorioText");
+    const rel = document.getElementById("relatorio");
     let texto = "";
     produtos.forEach(p => {
       texto += `Produto: ${p.nome}\n`;
@@ -382,15 +195,43 @@
     rel.textContent = texto;
   }
 
-  // Inicializa UI
-  atualizarUI();
+  // Função para gerar PDF com jsPDF
+  function gerarPDF() {
+    if (produtos.length === 0) return alert("Nenhum produto para gerar relatório.");
 
-  // Service worker simplificado para GitHub Pages
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js')
-      .then(() => console.log('Service Worker registrado'))
-      .catch(e => console.warn('Service Worker falhou:', e));
+    const doc = new jsPDF();
+
+    let y = 10;
+    doc.setFontSize(16);
+    doc.text("Relatório de Movimentações", 10, y);
+    y += 10;
+
+    doc.setFontSize(12);
+    produtos.forEach(p => {
+      doc.text(`Produto: ${p.nome}`, 10, y);
+      y += 7;
+      if (p.historico.length === 0) {
+        doc.text("Nenhuma movimentação registrada.", 12, y);
+        y += 10;
+      } else {
+        p.historico.forEach(h => {
+          const linha = `- ${h.data}: ${h.acao} de ${h.quantidade} unidades em ${h.local}`;
+          doc.text(linha, 12, y);
+          y += 7;
+          if (y > 280) { // Quebra de página
+            doc.addPage();
+            y = 10;
+          }
+        });
+        y += 5;
+      }
+    });
+
+    doc.save("relatorio_estoque.pdf");
   }
+
+  atualizarSelects();
+  mostrarEstoque();
 </script>
 
 </body>
