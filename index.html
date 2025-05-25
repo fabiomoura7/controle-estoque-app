@@ -8,12 +8,44 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 30px;
+      margin: 0;
       background-color: #f5f5f5;
     }
 
-    h1, h2 {
-      color: #333;
+    header {
+      background-color: #333;
+      color: white;
+      padding: 15px;
+      text-align: center;
+    }
+
+    nav {
+      display: flex;
+      justify-content: center;
+      background-color: #4CAF50;
+    }
+
+    nav button {
+      flex: 1;
+      padding: 14px 16px;
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    nav button:hover {
+      background-color: #45a049;
+    }
+
+    section {
+      display: none;
+      padding: 20px;
+    }
+
+    section.active {
+      display: block;
     }
 
     input, select, button {
@@ -22,14 +54,14 @@
       font-size: 16px;
     }
 
-    button {
+    button.action {
       background-color: #4CAF50;
       color: white;
       border: none;
       cursor: pointer;
     }
 
-    button:hover {
+    button.action:hover {
       background-color: #45a049;
     }
 
@@ -48,30 +80,50 @@
   </style>
 </head>
 <body>
-  <h1>Controle de Estoque</h1>
+  <header>
+    <h1>Controle de Estoque</h1>
+  </header>
 
-  <h2>Cadastro de Produto</h2>
-  <input type="text" id="nomeProduto" placeholder="Nome do produto">
-  <button onclick="cadastrarProduto()">Cadastrar Produto</button>
+  <nav>
+    <button onclick="mostrarGuia('produtos')">Produtos</button>
+    <button onclick="mostrarGuia('locais')">Locais</button>
+    <button onclick="mostrarGuia('movimentacao')">Movimentação</button>
+    <button onclick="mostrarGuia('estoque')">Estoque</button>
+    <button onclick="mostrarGuia('relatorio')">Relatório</button>
+  </nav>
 
-  <h2>Cadastro de Local</h2>
-  <input type="text" id="nomeLocal" placeholder="Nome do local (ex: Câmara)">
-  <input type="text" id="enderecoLocal" placeholder="Local (ex: 01, 02)">
-  <button onclick="cadastrarLocal()">Cadastrar Local</button>
+  <section id="produtos" class="active">
+    <h2>Cadastro de Produto</h2>
+    <input type="text" id="nomeProduto" placeholder="Nome do produto">
+    <button class="action" onclick="cadastrarProduto()">Cadastrar Produto</button>
+  </section>
 
-  <h2>Movimentar Produto</h2>
-  <select id="selectProduto"></select>
-  <select id="selectLocal"></select>
-  <input type="number" id="quantidade" placeholder="Quantidade">
-  <button onclick="movimentarProduto()">Movimentar</button>
+  <section id="locais">
+    <h2>Cadastro de Local</h2>
+    <input type="text" id="nomeLocal" placeholder="Nome do local (ex: Câmara)">
+    <input type="text" id="enderecoLocal" placeholder="Local (ex: 01, 02)">
+    <button class="action" onclick="cadastrarLocal()">Cadastrar Local</button>
+  </section>
 
-  <h2>Estoque Atual</h2>
-  <div id="estoque"></div>
+  <section id="movimentacao">
+    <h2>Movimentar Produto</h2>
+    <select id="selectProduto"></select>
+    <select id="selectLocal"></select>
+    <input type="number" id="quantidade" placeholder="Quantidade">
+    <button class="action" onclick="movimentarProduto()">Movimentar</button>
+  </section>
 
-  <h2>Relatório de Movimentações</h2>
-  <button onclick="gerarRelatorio()">Visualizar Relatório</button>
-  <button onclick="gerarPDF()">Exportar PDF</button>
-  <pre id="relatorio"></pre>
+  <section id="estoque">
+    <h2>Estoque Atual</h2>
+    <div id="estoqueConteudo"></div>
+  </section>
+
+  <section id="relatorio">
+    <h2>Relatório de Movimentações</h2>
+    <button class="action" onclick="gerarRelatorio()">Visualizar Relatório</button>
+    <button class="action" onclick="gerarPDF()">Exportar PDF</button>
+    <pre id="relatorioTexto"></pre>
+  </section>
 
   <script>
     let produtos = JSON.parse(localStorage.getItem("produtos")) || [];
@@ -80,6 +132,11 @@
     function salvarDados() {
       localStorage.setItem("produtos", JSON.stringify(produtos));
       localStorage.setItem("locais", JSON.stringify(locais));
+    }
+
+    function mostrarGuia(id) {
+      document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
     }
 
     function atualizarSelects() {
@@ -152,7 +209,7 @@
     }
 
     function mostrarEstoque() {
-      const div = document.getElementById("estoque");
+      const div = document.getElementById("estoqueConteudo");
       div.innerHTML = "";
       produtos.forEach(p => {
         const el = document.createElement("div");
@@ -164,7 +221,7 @@
     }
 
     function gerarRelatorio() {
-      const rel = document.getElementById("relatorio");
+      const rel = document.getElementById("relatorioTexto");
       let texto = "";
       produtos.forEach(p => {
         texto += `Produto: ${p.nome}\n`;
@@ -201,16 +258,5 @@
     atualizarSelects();
     mostrarEstoque();
   </script>
-
-  <!--
-    EXPLICAÇÃO DO CÓDIGO HTML:
-    - <input> e <button>: usados para entrada de dados e ações
-    - <select>: menus de seleção para produto e local
-    - <div id="estoque">: exibe o estoque atual
-    - <pre id="relatorio">: exibe relatório formatado
-    - <script>: toda a lógica está aqui (cadastro, movimentação, exibição)
-    - localStorage: usado para persistir dados localmente no navegador
-    - jsPDF: biblioteca usada para gerar PDF
-  -->
 </body>
 </html>
