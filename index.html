@@ -99,6 +99,7 @@
     <input type="number" id="quantidadeInicial" placeholder="Quantidade inicial">
     <select id="localInicial"></select>
     <button class="action" onclick="cadastrarProduto()">Cadastrar Produto</button>
+    <div id="listaProdutos"></div>
   </section>
 
   <section id="locais">
@@ -147,6 +148,7 @@
       document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
       document.getElementById(id).classList.add("active");
       if (id === "locais") mostrarLocais();
+      if (id === "produtos") mostrarProdutos();
     }
 
     function atualizarSelects() {
@@ -201,6 +203,7 @@
       salvarDados();
       atualizarSelects();
       mostrarEstoque();
+      mostrarProdutos();
       document.getElementById("nomeProduto").value = "";
       document.getElementById("codigoProduto").value = "";
       document.getElementById("quantidadeInicial").value = "";
@@ -219,9 +222,37 @@
       mostrarLocais();
     }
 
+    function excluirProduto(id) {
+      if (confirm("Deseja excluir este produto?")) {
+        produtos = produtos.filter(p => p.id !== id);
+        salvarDados();
+        atualizarSelects();
+        mostrarProdutos();
+        mostrarEstoque();
+      }
+    }
+
+    function excluirLocal(nome, endereco) {
+      if (confirm("Deseja excluir este local?")) {
+        locais = locais.filter(l => !(l.nome === nome && l.endereco === endereco));
+        salvarDados();
+        atualizarSelects();
+        mostrarLocais();
+      }
+    }
+
+    function mostrarProdutos() {
+      const div = document.getElementById("listaProdutos");
+      div.innerHTML = "<h3>Produtos Cadastrados:</h3>" + produtos.map(p =>
+        `<div>${p.codigo} - ${p.nome} <button onclick="excluirProduto('${p.id}')">Excluir</button></div>`
+      ).join("");
+    }
+
     function mostrarLocais() {
       const div = document.getElementById("listaLocais");
-      div.innerHTML = "<h3>Locais Cadastrados:</h3>" + locais.map(l => `${l.nome} (${l.endereco})`).join("<br>");
+      div.innerHTML = "<h3>Locais Cadastrados:</h3>" + locais.map(l =>
+        `<div>${l.nome} (${l.endereco}) <button onclick="excluirLocal('${l.nome}', '${l.endereco}')">Excluir</button></div>`
+      ).join("");
     }
 
     function movimentarProduto() {
@@ -332,6 +363,7 @@
     atualizarSelects();
     mostrarEstoque();
     mostrarLocais();
+    mostrarProdutos();
   </script>
 </body>
 </html>
