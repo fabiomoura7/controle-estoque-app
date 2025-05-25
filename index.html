@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Controle de Estoque</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
@@ -11,20 +11,17 @@
       margin: 0;
       background-color: #f5f5f5;
     }
-
     header {
       background-color: #333;
       color: white;
       padding: 15px;
       text-align: center;
     }
-
     nav {
       display: flex;
       justify-content: center;
       background-color: #4CAF50;
     }
-
     nav button {
       flex: 1;
       padding: 14px 16px;
@@ -34,45 +31,37 @@
       font-size: 16px;
       cursor: pointer;
     }
-
     nav button:hover {
       background-color: #45a049;
     }
-
     section {
       display: none;
       padding: 20px;
     }
-
     section.active {
       display: block;
     }
-
     input, select, button {
       padding: 10px;
       margin: 5px;
       font-size: 16px;
     }
-
     button.action {
       background-color: #4CAF50;
       color: white;
       border: none;
       cursor: pointer;
     }
-
     button.action:hover {
       background-color: #45a049;
     }
-
     #estoque {
       background-color: white;
       padding: 15px;
       border-radius: 5px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
-
-    .produto {
+    .produto, .local {
       margin-bottom: 10px;
       padding: 10px;
       border-bottom: 1px solid #ccc;
@@ -94,19 +83,21 @@
 
   <section id="produtos" class="active">
     <h2>Cadastro de Produto</h2>
-    <input type="text" id="codigoProduto" placeholder="Código do produto">
-    <input type="text" id="nomeProduto" placeholder="Nome do produto">
-    <input type="number" id="quantidadeInicial" placeholder="Quantidade inicial">
+    <input type="hidden" id="produtoEditId" />
+    <input type="text" id="codigoProduto" placeholder="Código do produto" />
+    <input type="text" id="nomeProduto" placeholder="Nome do produto" />
+    <input type="number" id="quantidadeInicial" placeholder="Quantidade inicial" />
     <select id="localInicial"></select>
-    <button class="action" onclick="cadastrarProduto()">Cadastrar Produto</button>
+    <button class="action" onclick="cadastrarOuAlterarProduto()">Salvar Produto</button>
     <div id="listaProdutos"></div>
   </section>
 
   <section id="locais">
     <h2>Cadastro de Local</h2>
-    <input type="text" id="nomeLocal" placeholder="Nome do local (ex: Câmara)">
-    <input type="text" id="enderecoLocal" placeholder="Local (ex: 01, 02)">
-    <button class="action" onclick="cadastrarLocal()">Cadastrar Local</button>
+    <input type="hidden" id="localEditIndex" />
+    <input type="text" id="nomeLocal" placeholder="Nome do local (ex: Câmara)" />
+    <input type="text" id="enderecoLocal" placeholder="Local (ex: 01, 02)" />
+    <button class="action" onclick="cadastrarOuAlterarLocal()">Salvar Local</button>
     <div id="listaLocais"></div>
   </section>
 
@@ -115,7 +106,7 @@
     <select id="selectProduto" onchange="mostrarHistoricoMovimentacao()"></select>
     <select id="selectLocalOrigem"></select>
     <select id="selectLocalDestino"></select>
-    <input type="number" id="quantidade" placeholder="Quantidade">
+    <input type="number" id="quantidade" placeholder="Quantidade" />
     <button class="action" onclick="movimentarProduto()">Movimentar</button>
     <pre id="historicoProduto"></pre>
   </section>
@@ -132,53 +123,398 @@
     <pre id="relatorioTexto"></pre>
   </section>
 
-  <script>
-    // Adicionado: Funções para editar produto/local
-    function editarProduto(id) {
-      const produto = produtos.find(p => p.id === id);
-      const novoNome = prompt("Novo nome do produto:", produto.nome);
-      const novoCodigo = prompt("Novo código do produto:", produto.codigo);
-      if (novoNome && novoCodigo) {
-        produto.nome = novoNome.trim();
-        produto.codigo = novoCodigo.trim();
-        salvarDados();
-        mostrarProdutos();
-        atualizarSelects();
-        mostrarEstoque();
+<script>
+  let produtos = JSON.parse(localStorage.getItem("produtos")) || [];
+  let locais = JSON.parse(localStorage.getItem("locais")) || [];
+
+  if (!Array.isArray(produtos)) produtos = [];
+  if (!Array.isArray(locais)) locais = [];
+
+  function salvarDados() {
+    localStorage.setItem("produtos", JSON.stringify(produtos));
+    localStorage.setItem("locais", JSON.stringify(locais));
+  }
+
+  function mostrarGuia(id) {
+    document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+    if (id === "locais") mostrarLocais();
+    if (id === "produtos") mostrarProdutos();
+  }
+
+  function atualizarSelects() {
+    const produtoSelect = document.getElementById("selectProduto");
+    if (produtoSelect) {
+      produtoSelect.innerHTML = "";
+      produtos.forEach(p => {
+        const option = document.createElement("option");
+        option.value = p.id;
+        option.textContent = `${p.codigo} - ${p.nome}`;
+        produtoSelect.appendChild(option);
+      });
+    }
+
+    const selectsLocais = ["selectLocalOrigem", "selectLocalDestino", "localInicial"];
+    selectsLocais.forEach(selectId => {
+      const select = document.getElementById(selectId);
+      if (select) {
+        select.innerHTML = "";
+        locais.forEach((l) => {
+          const text = `${l.nome} (${l.endereco})`;
+          const val = `${l.nome}-${l.endereco}`;
+          const option = document.createElement("option");
+          option.value = val;
+          option.textContent = text;
+          select.appendChild(option);
+        });
       }
+    });
+  }
+
+  // Função para cadastrar ou alterar produto
+  function cadastrarOuAlterarProduto() {
+    const idEdit = document.getElementById("produtoEditId").value;
+    const nome = document.getElementById("nomeProduto").value.trim();
+    const codigo = document.getElementById("codigoProduto").value.trim();
+    const quantidade = parseInt(document.getElementById("quantidadeInicial").value);
+    const local = document.getElementById("localInicial").value;
+
+    if (!nome || !codigo || isNaN(quantidade) || !local) {
+      alert("Preencha todos os campos do produto corretamente.");
+      return;
     }
 
-    function editarLocal(nome, endereco) {
-      const local = locais.find(l => l.nome === nome && l.endereco === endereco);
-      const novoNome = prompt("Novo nome:", local.nome);
-      const novoEndereco = prompt("Novo endereço:", local.endereco);
-      if (novoNome && novoEndereco) {
-        local.nome = novoNome.trim();
-        local.endereco = novoEndereco.trim();
-        salvarDados();
-        mostrarLocais();
-        atualizarSelects();
+    if (idEdit) {
+      // Alterar produto existente
+      const produto = produtos.find(p => p.id === idEdit);
+      if (!produto) return alert("Produto não encontrado.");
+
+      produto.nome = nome;
+      produto.codigo = codigo;
+
+      // Atualiza quantidade no local inicial se local ou quantidade mudou
+      const localObj = produto.localizacoes.find(l => l.local === local);
+      if (localObj) {
+        localObj.quantidade = quantidade;
+      } else {
+        produto.localizacoes.push({ local, quantidade });
       }
+      // Adicionar histórico de alteração de estoque (opcional)
+
+      alert("Produto alterado com sucesso.");
+      document.getElementById("produtoEditId").value = "";
+    } else {
+      // Cadastrar novo produto
+      const id = "p" + Date.now();
+      produtos.push({
+        id,
+        nome,
+        codigo,
+        localizacoes: [{ local, quantidade }],
+        historico: [{
+          data: new Date().toISOString().split("T")[0],
+          acao: "Entrada",
+          origem: "Externo",
+          destino: local,
+          quantidade
+        }]
+      });
+      alert("Produto cadastrado com sucesso.");
     }
 
-    // Modificações nas funções mostrarProdutos e mostrarLocais para incluir botão Editar
-    function mostrarProdutos() {
-      const div = document.getElementById("listaProdutos");
-      div.innerHTML = "<h3>Produtos Cadastrados:</h3>" + produtos.map(p =>
-        `<div>${p.codigo} - ${p.nome} ` +
-        `<button onclick="editarProduto('${p.id}')">Editar</button> ` +
-        `<button onclick="excluirProduto('${p.id}')">Excluir</button></div>`
-      ).join("");
+    salvarDados();
+    atualizarSelects();
+    mostrarProdutos();
+    mostrarEstoque();
+
+    // Limpar campos
+    document.getElementById("nomeProduto").value = "";
+    document.getElementById("codigoProduto").value = "";
+    document.getElementById("quantidadeInicial").value = "";
+    document.getElementById("localInicial").selectedIndex = 0;
+  }
+
+  // Função para editar produto
+  function editarProduto(id) {
+    const produto = produtos.find(p => p.id === id);
+    if (!produto) return alert("Produto não encontrado para edição.");
+
+    document.getElementById("produtoEditId").value = produto.id;
+    document.getElementById("nomeProduto").value = produto.nome;
+    document.getElementById("codigoProduto").value = produto.codigo;
+
+    // Mostrar localização e quantidade do primeiro local para edição
+    if (produto.localizacoes.length > 0) {
+      const loc = produto.localizacoes[0].local;
+      const qtd = produto.localizacoes[0].quantidade;
+      document.getElementById("localInicial").value = loc;
+      document.getElementById("quantidadeInicial").value = qtd;
+    } else {
+      document.getElementById("localInicial").selectedIndex = 0;
+      document.getElementById("quantidadeInicial").value = "";
     }
 
-    function mostrarLocais() {
-      const div = document.getElementById("listaLocais");
-      div.innerHTML = "<h3>Locais Cadastrados:</h3>" + locais.map(l =>
-        `<div>${l.nome} (${l.endereco}) ` +
-        `<button onclick="editarLocal('${l.nome}', '${l.endereco}')">Editar</button> ` +
-        `<button onclick="excluirLocal('${l.nome}', '${l.endereco}')">Excluir</button></div>`
-      ).join("");
+    mostrarGuia("produtos");
+  }
+
+  // Função para excluir produto
+  function excluirProduto(id) {
+    if (confirm("Deseja excluir este produto?")) {
+      produtos = produtos.filter(p => p.id !== id);
+      salvarDados();
+      atualizarSelects();
+      mostrarProdutos();
+      mostrarEstoque();
     }
-  </script>
+  }
+
+  // Mostrar lista de produtos com editar e excluir
+  function mostrarProdutos() {
+    const div = document.getElementById("listaProdutos");
+    if (produtos.length === 0) {
+      div.innerHTML = "<p>Nenhum produto cadastrado.</p>";
+      return;
+    }
+    div.innerHTML = "<h3>Produtos Cadastrados:</h3>" + produtos.map(p =>
+      `<div class="produto">
+        ${p.codigo} - ${p.nome} 
+        <button onclick="editarProduto('${p.id}')">Editar</button> 
+        <button onclick="excluirProduto('${p.id}')">Excluir</button>
+      </div>`
+    ).join("");
+  }
+
+  // Função para cadastrar ou alterar local
+  function cadastrarOuAlterarLocal() {
+    const editIndex = document.getElementById("localEditIndex").value;
+    const nome = document.getElementById("nomeLocal").value.trim();
+    const endereco = document.getElementById("enderecoLocal").value.trim();
+
+    if (!nome || !endereco) {
+      alert("Preencha todos os campos do local.");
+      return;
+    }
+
+    if (editIndex) {
+      // Alterar local existente
+      locais[editIndex].nome = nome;
+      locais[editIndex].endereco = endereco;
+      alert("Local alterado com sucesso.");
+      document.getElementById("localEditIndex").value = "";
+    } else {
+      // Verifica se local já existe com nome e endereço iguais
+      if (locais.find(l => l.nome === nome && l.endereco === endereco)) {
+        alert("Local já cadastrado!");
+        return;
+      }
+      locais.push({ nome, endereco });
+      alert("Local cadastrado com sucesso.");
+    }
+
+    salvarDados();
+    atualizarSelects();
+    mostrarLocais();
+
+    document.getElementById("nomeLocal").value = "";
+    document.getElementById("enderecoLocal").value = "";
+  }
+
+  // Função para editar local
+  function editarLocal(index) {
+    const local = locais[index];
+    if (!local) return alert("Local não encontrado para edição.");
+
+    document.getElementById("localEditIndex").value = index;
+    document.getElementById("nomeLocal").value = local.nome;
+    document.getElementById("enderecoLocal").value = local.endereco;
+
+    mostrarGuia("locais");
+  }
+
+  // Excluir local
+  function excluirLocal(index) {
+    if (confirm("Deseja excluir este local?")) {
+      locais.splice(index, 1);
+      salvarDados();
+      atualizarSelects();
+      mostrarLocais();
+    }
+  }
+
+  // Mostrar lista de locais com editar e excluir
+  function mostrarLocais() {
+    const div = document.getElementById("listaLocais");
+    if (locais.length === 0) {
+      div.innerHTML = "<p>Nenhum local cadastrado.</p>";
+      return;
+    }
+    div.innerHTML = "<h3>Locais Cadastrados:</h3>" + locais.map((l, i) =>
+      `<div class="local">
+        ${l.nome} (${l.endereco})
+        <button onclick="editarLocal(${i})">Editar</button>
+        <button onclick="excluirLocal(${i})">Excluir</button>
+      </div>`
+    ).join("");
+  }
+
+  // Função para movimentar produto
+  function movimentarProduto() {
+    const idProduto = document.getElementById("selectProduto").value;
+    const origem = document.getElementById("selectLocalOrigem").value;
+    const destino = document.getElementById("selectLocalDestino").value;
+    const quantidade = parseInt(document.getElementById("quantidade").value);
+
+    if (!idProduto || !origem || !destino || isNaN(quantidade) || quantidade <= 0) {
+      alert("Preencha todos os campos corretamente.");
+      return;
+    }
+
+    if (origem === destino) {
+      alert("Local de origem e destino não podem ser iguais.");
+      return;
+    }
+
+    const produto = produtos.find(p => p.id === idProduto);
+    if (!produto) {
+      alert("Produto não encontrado.");
+      return;
+    }
+
+    // Verifica estoque no local de origem
+    const localOrigem = produto.localizacoes.find(l => l.local === origem);
+    if (!localOrigem || localOrigem.quantidade < quantidade) {
+      alert("Quantidade insuficiente no local de origem.");
+      return;
+    }
+
+    // Remove quantidade do local origem
+    localOrigem.quantidade -= quantidade;
+    if (localOrigem.quantidade === 0) {
+      // Remove local da lista se zero
+      produto.localizacoes = produto.localizacoes.filter(l => l.local !== origem);
+    }
+
+    // Adiciona quantidade no local destino
+    let localDestino = produto.localizacoes.find(l => l.local === destino);
+    if (localDestino) {
+      localDestino.quantidade += quantidade;
+    } else {
+      produto.localizacoes.push({ local: destino, quantidade });
+    }
+
+    // Registra histórico
+    produto.historico = produto.historico || [];
+    produto.historico.push({
+      data: new Date().toISOString().split("T")[0],
+      acao: "Movimentação",
+      origem,
+      destino,
+      quantidade
+    });
+
+    salvarDados();
+    mostrarEstoque();
+    mostrarHistoricoMovimentacao();
+    alert("Movimentação registrada com sucesso.");
+
+    // Limpar campos
+    document.getElementById("quantidade").value = "";
+  }
+
+  // Mostrar estoque atual
+  function mostrarEstoque() {
+    const div = document.getElementById("estoqueConteudo");
+    if (produtos.length === 0) {
+      div.innerHTML = "<p>Nenhum produto cadastrado.</p>";
+      return;
+    }
+    let html = "";
+    produtos.forEach(p => {
+      html += `<h3>${p.codigo} - ${p.nome}</h3>`;
+      if (!p.localizacoes || p.localizacoes.length === 0) {
+        html += "<p>Sem estoque.</p>";
+      } else {
+        html += "<ul>";
+        p.localizacoes.forEach(l => {
+          html += `<li>${l.local}: ${l.quantidade}</li>`;
+        });
+        html += "</ul>";
+      }
+    });
+    div.innerHTML = html;
+  }
+
+  // Mostrar histórico da movimentação do produto selecionado
+  function mostrarHistoricoMovimentacao() {
+    const idProduto = document.getElementById("selectProduto").value;
+    const historicoArea = document.getElementById("historicoProduto");
+    const produto = produtos.find(p => p.id === idProduto);
+    if (!produto || !produto.historico || produto.historico.length === 0) {
+      historicoArea.textContent = "Nenhum histórico disponível.";
+      return;
+    }
+
+    let texto = "Data       | Ação          | Origem     | Destino    | Quantidade\n";
+    texto += "---------------------------------------------------------------\n";
+    produto.historico.forEach(h => {
+      texto += `${h.data} | ${h.acao.padEnd(13)} | ${h.origem.padEnd(10)} | ${h.destino.padEnd(10)} | ${h.quantidade}\n`;
+    });
+
+    historicoArea.textContent = texto;
+  }
+
+  // Gerar relatório texto de movimentações
+  function gerarRelatorio() {
+    let relatorio = "";
+    produtos.forEach(p => {
+      relatorio += `Produto: ${p.codigo} - ${p.nome}\n`;
+      if (p.historico && p.historico.length > 0) {
+        p.historico.forEach(h => {
+          relatorio += `  ${h.data}: ${h.acao} de ${h.origem} para ${h.destino}, qtd: ${h.quantidade}\n`;
+        });
+      } else {
+        relatorio += "  Nenhuma movimentação registrada.\n";
+      }
+      relatorio += "\n";
+    });
+    document.getElementById("relatorioTexto").textContent = relatorio;
+  }
+
+  // Exportar relatório para PDF usando jsPDF
+  function gerarPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    let y = 10;
+    produtos.forEach(p => {
+      doc.text(`Produto: ${p.codigo} - ${p.nome}`, 10, y);
+      y += 10;
+      if (p.historico && p.historico.length > 0) {
+        p.historico.forEach(h => {
+          const linha = `${h.data}: ${h.acao} de ${h.origem} para ${h.destino}, qtd: ${h.quantidade}`;
+          doc.text(linha, 20, y);
+          y += 10;
+          if (y > 280) {
+            doc.addPage();
+            y = 10;
+          }
+        });
+      } else {
+        doc.text("Nenhuma movimentação registrada.", 20, y);
+        y += 10;
+      }
+      y += 5;
+    });
+
+    doc.save("relatorio_movimentacoes.pdf");
+  }
+
+  // Inicialização
+  atualizarSelects();
+  mostrarProdutos();
+  mostrarLocais();
+  mostrarEstoque();
+
+</script>
 </body>
 </html>
