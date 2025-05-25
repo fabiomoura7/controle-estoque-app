@@ -1,42 +1,45 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de Estoque</title>
-
-  <!-- jsPDF para gerar PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
   <style>
     body {
       font-family: Arial, sans-serif;
       margin: 30px;
       background-color: #f5f5f5;
     }
+
     h1, h2 {
       color: #333;
     }
+
     input, select, button {
       padding: 10px;
       margin: 5px;
       font-size: 16px;
     }
+
     button {
       background-color: #4CAF50;
       color: white;
       border: none;
       cursor: pointer;
     }
+
     button:hover {
       background-color: #45a049;
     }
+
     #estoque {
       background-color: white;
       padding: 15px;
       border-radius: 5px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
+
     .produto {
       margin-bottom: 10px;
       padding: 10px;
@@ -45,194 +48,169 @@
   </style>
 </head>
 <body>
+  <h1>Controle de Estoque</h1>
 
-<h1>Controle de Estoque</h1>
+  <h2>Cadastro de Produto</h2>
+  <input type="text" id="nomeProduto" placeholder="Nome do produto">
+  <button onclick="cadastrarProduto()">Cadastrar Produto</button>
 
-<h2>Cadastro de Produto</h2>
-<input type="text" id="nomeProduto" placeholder="Nome do produto" />
-<button onclick="cadastrarProduto()">Cadastrar Produto</button>
+  <h2>Cadastro de Local</h2>
+  <input type="text" id="nomeLocal" placeholder="Nome do local (ex: Câmara)">
+  <input type="text" id="enderecoLocal" placeholder="Local (ex: 01, 02)">
+  <button onclick="cadastrarLocal()">Cadastrar Local</button>
 
-<h2>Cadastro de Local</h2>
-<input type="text" id="nomeLocal" placeholder="Nome do local (ex: Câmara)" />
-<input type="text" id="enderecoLocal" placeholder="Descrição ou endereço (ex: 01, 02)" />
-<button onclick="cadastrarLocal()">Cadastrar Local</button>
+  <h2>Movimentar Produto</h2>
+  <select id="selectProduto"></select>
+  <select id="selectLocal"></select>
+  <input type="number" id="quantidade" placeholder="Quantidade">
+  <button onclick="movimentarProduto()">Movimentar</button>
 
-<h2>Movimentar Produto</h2>
-<select id="selectProduto"></select>
-<select id="selectLocal"></select>
-<input type="number" id="quantidade" placeholder="Quantidade" />
-<button onclick="movimentarProduto()">Movimentar</button>
+  <h2>Estoque Atual</h2>
+  <div id="estoque"></div>
 
-<h2>Estoque Atual</h2>
-<div id="estoque"></div>
+  <h2>Relatório de Movimentações</h2>
+  <button onclick="gerarRelatorio()">Visualizar Relatório</button>
+  <button onclick="gerarPDF()">Exportar PDF</button>
+  <pre id="relatorio"></pre>
 
-<h2>Relatório de Movimentações</h2>
-<button onclick="gerarRelatorio()">Gerar Relatório (texto)</button>
-<button onclick="gerarPDF()">Gerar Relatório em PDF</button>
-<pre id="relatorio"></pre>
+  <script>
+    let produtos = JSON.parse(localStorage.getItem("produtos")) || [];
+    let locais = JSON.parse(localStorage.getItem("locais")) || [];
 
-<script>
-  const { jsPDF } = window.jspdf;
-
-  let produtos = JSON.parse(localStorage.getItem("produtos")) || [];
-  let locais = JSON.parse(localStorage.getItem("locais")) || [];
-
-  function salvarDados() {
-    localStorage.setItem("produtos", JSON.stringify(produtos));
-    localStorage.setItem("locais", JSON.stringify(locais));
-  }
-
-  function atualizarSelects() {
-    const produtoSelect = document.getElementById("selectProduto");
-    produtoSelect.innerHTML = "";
-    produtos.forEach(p => {
-      const option = document.createElement("option");
-      option.value = p.id;
-      option.textContent = p.nome;
-      produtoSelect.appendChild(option);
-    });
-
-    const localSelect = document.getElementById("selectLocal");
-    localSelect.innerHTML = "";
-    locais.forEach(l => {
-      const option = document.createElement("option");
-      // Valor do local como combinação nome + endereco para diferenciar
-      option.value = `${l.nome} - ${l.endereco}`;
-      option.textContent = `${l.nome} (${l.endereco})`;
-      localSelect.appendChild(option);
-    });
-  }
-
-  function cadastrarProduto() {
-    const nome = document.getElementById("nomeProduto").value.trim();
-    if (!nome) return alert("Digite o nome do produto.");
-    const id = "p" + Date.now();
-    produtos.push({ id, nome, localizacoes: [], historico: [] });
-    salvarDados();
-    atualizarSelects();
-    mostrarEstoque();
-    document.getElementById("nomeProduto").value = "";
-  }
-
-  function cadastrarLocal() {
-    const nome = document.getElementById("nomeLocal").value.trim();
-    const endereco = document.getElementById("enderecoLocal").value.trim();
-    if (!nome || !endereco) return alert("Preencha nome e descrição/endereço do local.");
-
-    // Agora permite nomes iguais, apenas diferenciando pela descrição
-    locais.push({ nome, endereco });
-    salvarDados();
-    atualizarSelects();
-    document.getElementById("nomeLocal").value = "";
-    document.getElementById("enderecoLocal").value = "";
-  }
-
-  function movimentarProduto() {
-    const produtoId = document.getElementById("selectProduto").value;
-    const localSelecionado = document.getElementById("selectLocal").value;
-    const quantidade = parseInt(document.getElementById("quantidade").value);
-    if (!produtoId || !localSelecionado || isNaN(quantidade)) return alert("Preencha todos os campos corretamente.");
-
-    const produto = produtos.find(p => p.id === produtoId);
-
-    // localSelecionado no formato "nome - endereco"
-    let loc = produto.localizacoes.find(l => `${l.local} - ${l.endereco}` === localSelecionado);
-
-    if (!loc) {
-      const [nomeLocal, enderecoLocal] = localSelecionado.split(" - ");
-      loc = { local: nomeLocal, endereco: enderecoLocal, quantidade: 0 };
-      produto.localizacoes.push(loc);
+    function salvarDados() {
+      localStorage.setItem("produtos", JSON.stringify(produtos));
+      localStorage.setItem("locais", JSON.stringify(locais));
     }
 
-    loc.quantidade += quantidade;
+    function atualizarSelects() {
+      const produtoSelect = document.getElementById("selectProduto");
+      produtoSelect.innerHTML = "";
+      produtos.forEach(p => {
+        const option = document.createElement("option");
+        option.value = p.id;
+        option.textContent = p.nome;
+        produtoSelect.appendChild(option);
+      });
 
-    produto.historico.push({
-      data: new Date().toISOString().split("T")[0],
-      acao: quantidade > 0 ? "Entrada" : "Saída",
-      local: localSelecionado,
-      quantidade
-    });
-
-    salvarDados();
-    mostrarEstoque();
-    document.getElementById("quantidade").value = "";
-  }
-
-  function mostrarEstoque() {
-    const div = document.getElementById("estoque");
-    div.innerHTML = "";
-    if (produtos.length === 0) {
-      div.textContent = "Nenhum produto cadastrado.";
-      return;
+      const localSelect = document.getElementById("selectLocal");
+      localSelect.innerHTML = "";
+      locais.forEach((l, index) => {
+        const option = document.createElement("option");
+        option.value = `${l.nome}-${l.endereco}`;
+        option.textContent = `${l.nome} (${l.endereco})`;
+        localSelect.appendChild(option);
+      });
     }
-    produtos.forEach(p => {
-      const el = document.createElement("div");
-      el.className = "produto";
-      el.innerHTML = `<strong>${p.nome}</strong><br>`;
-      if (p.localizacoes.length > 0) {
-        el.innerHTML += p.localizacoes.map(l => `${l.local} (${l.endereco}): ${l.quantidade}`).join("<br>");
-      } else {
-        el.innerHTML += "Sem estoque registrado.";
+
+    function cadastrarProduto() {
+      const nome = document.getElementById("nomeProduto").value.trim();
+      if (!nome) return;
+      const id = "p" + Date.now();
+      produtos.push({ id, nome, localizacoes: [], historico: [] });
+      salvarDados();
+      atualizarSelects();
+      mostrarEstoque();
+      document.getElementById("nomeProduto").value = "";
+    }
+
+    function cadastrarLocal() {
+      const nome = document.getElementById("nomeLocal").value.trim();
+      const endereco = document.getElementById("enderecoLocal").value.trim();
+      if (!nome || !endereco) return;
+      if (locais.find(l => l.nome === nome && l.endereco === endereco)) return alert("Local já cadastrado!");
+      locais.push({ nome, endereco });
+      salvarDados();
+      atualizarSelects();
+      document.getElementById("nomeLocal").value = "";
+      document.getElementById("enderecoLocal").value = "";
+    }
+
+    function movimentarProduto() {
+      const produtoId = document.getElementById("selectProduto").value;
+      const local = document.getElementById("selectLocal").value;
+      const quantidade = parseInt(document.getElementById("quantidade").value);
+      if (!produtoId || !local || isNaN(quantidade)) return;
+
+      const produto = produtos.find(p => p.id === produtoId);
+      let loc = produto.localizacoes.find(l => l.local === local);
+      if (!loc) {
+        loc = { local, quantidade: 0 };
+        produto.localizacoes.push(loc);
       }
-      div.appendChild(el);
-    });
-  }
+      loc.quantidade += quantidade;
 
-  function gerarRelatorio() {
-    const rel = document.getElementById("relatorio");
-    let texto = "";
-    produtos.forEach(p => {
-      texto += `Produto: ${p.nome}\n`;
-      if (p.historico.length === 0) {
-        texto += "  Nenhuma movimentação registrada.\n\n";
-      } else {
+      produto.historico.push({
+        data: new Date().toISOString().split("T")[0],
+        acao: "Movimentação",
+        local,
+        quantidade
+      });
+
+      salvarDados();
+      mostrarEstoque();
+      document.getElementById("quantidade").value = "";
+    }
+
+    function mostrarEstoque() {
+      const div = document.getElementById("estoque");
+      div.innerHTML = "";
+      produtos.forEach(p => {
+        const el = document.createElement("div");
+        el.className = "produto";
+        el.innerHTML = `<strong>${p.nome}</strong><br>` +
+          p.localizacoes.map(l => `${l.local}: ${l.quantidade}`).join("<br>");
+        div.appendChild(el);
+      });
+    }
+
+    function gerarRelatorio() {
+      const rel = document.getElementById("relatorio");
+      let texto = "";
+      produtos.forEach(p => {
+        texto += `Produto: ${p.nome}\n`;
         p.historico.forEach(h => {
-          texto += `  - ${h.data}: ${h.acao} de ${h.quantidade} unidades em ${h.local}\n`;
+          texto += ` - ${h.data}: ${h.acao} de ${h.quantidade} para ${h.local}\n`;
         });
         texto += "\n";
-      }
-    });
-    rel.textContent = texto;
-  }
+      });
+      rel.textContent = texto;
+    }
 
-  // Função para gerar PDF com jsPDF
-  function gerarPDF() {
-    if (produtos.length === 0) return alert("Nenhum produto para gerar relatório.");
+    async function gerarPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      let y = 10;
 
-    const doc = new jsPDF();
-
-    let y = 10;
-    doc.setFontSize(16);
-    doc.text("Relatório de Movimentações", 10, y);
-    y += 10;
-
-    doc.setFontSize(12);
-    produtos.forEach(p => {
-      doc.text(`Produto: ${p.nome}`, 10, y);
-      y += 7;
-      if (p.historico.length === 0) {
-        doc.text("Nenhuma movimentação registrada.", 12, y);
-        y += 10;
-      } else {
+      produtos.forEach(p => {
+        doc.text(`Produto: ${p.nome}`, 10, y);
+        y += 7;
         p.historico.forEach(h => {
-          const linha = `- ${h.data}: ${h.acao} de ${h.quantidade} unidades em ${h.local}`;
-          doc.text(linha, 12, y);
+          doc.text(`- ${h.data}: ${h.acao} de ${h.quantidade} para ${h.local}`, 10, y);
           y += 7;
-          if (y > 280) { // Quebra de página
-            doc.addPage();
-            y = 10;
-          }
         });
         y += 5;
-      }
-    });
+        if (y > 280) {
+          doc.addPage();
+          y = 10;
+        }
+      });
 
-    doc.save("relatorio_estoque.pdf");
-  }
+      doc.save("relatorio_estoque.pdf");
+    }
 
-  atualizarSelects();
-  mostrarEstoque();
-</script>
+    atualizarSelects();
+    mostrarEstoque();
+  </script>
 
+  <!--
+    EXPLICAÇÃO DO CÓDIGO HTML:
+    - <input> e <button>: usados para entrada de dados e ações
+    - <select>: menus de seleção para produto e local
+    - <div id="estoque">: exibe o estoque atual
+    - <pre id="relatorio">: exibe relatório formatado
+    - <script>: toda a lógica está aqui (cadastro, movimentação, exibição)
+    - localStorage: usado para persistir dados localmente no navegador
+    - jsPDF: biblioteca usada para gerar PDF
+  -->
 </body>
 </html>
